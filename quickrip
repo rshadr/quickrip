@@ -1,0 +1,89 @@
+#!/bin/sh
+
+tcol_reset='\x1b[0m'
+tcol_error='\x1b[1;31m'
+tcol_info='\x1b[1;33m'
+tcol_input_hint='\x1b[1;32m'
+tcol_input='\x1b[1;36m'
+
+artist_name=''
+album_name=''
+year=''
+num_tracks=0
+track_names_list=''
+
+io_info() {
+  printf "$tcol_info>>$tcol_reset "
+  echo $@
+}
+
+io_error() {
+  printf "$tcol_error>>$tcol_reset "
+  echo $@
+}
+
+io_in() {
+  if [ ! -z "$2" ]; then
+    printf "$tcol_input_hint>>$tcol_reset $2\n"
+  fi
+  printf "$tcol_input<<$tcol_reset "
+  read -r $1
+}
+
+die() {
+  io_error $@
+  popd > /dev/null
+  exit 1
+}
+
+handle_sigint() {
+  die "Received SIGINT; aborting"
+}
+
+nth_track() {
+ printf "$track_names_list" | sed "$1"'q;d' | tr -d '\n'
+}
+
+main () {
+  pushd . >/dev/null
+  trap 'handle_sigint' 2
+
+  if [ ! -f "$(which cdparanoia)" ]; then
+    die "cdparanoia not found!"
+  fi
+  cdparanoia -Qq || die "Invalid CD"
+
+  io_in album_name "Album name:"
+  io_in artist_name "Artist:"
+  io_in year "Year:"
+
+  io_in num_tracks "Number of tracks:"
+  for track_num in `seq 1 $num_tracks`; do
+    track_name=''
+    io_in track_name "Track $track_num name:"
+  done
+
+  rip_dir="$artist_name - $album_name [$year]"
+
+  mkdir -p "$rip_dir" || die "Could not create rip folder"
+  cd "$rip_dir"
+
+  io_info "Begin ripping..."
+  cdparanoia -B -w && io_info "Done."
+
+  track_num=1
+  for t in track*.wav; do
+    if [ $track_num -gt $num_tracks]; then
+      break
+    fi
+
+    mv "$t" "$(nth_track track_num)"
+
+    track_num=`expr $track_num + 1`
+  done
+
+  popd >/dev/null
+}
+
+main $@
+
