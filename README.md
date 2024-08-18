@@ -1,5 +1,8 @@
 # quickrip - Backup CDs
 
+### WARNING: Archived/unmaintained
+## DO NOT USE!!!
+
 This script is a simple wrapper around the cdparanoia tool: You can use it to
 rip CDs in a single pass. DVD support may be added later if I still use them
 in 2024...
